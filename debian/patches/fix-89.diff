@@ -1,0 +1,93 @@
+    saving $IFS in run() not altered for code using it
+    
+    IFS was modified by run() becoming '\n' and so relying to its bash default
+    was failing tests.
+    
+    Also some wrong tests corrected because was relying on this behavior to pass.
+    
+    Fix #89
+
+diff --git a/libexec/bats-exec-test b/libexec/bats-exec-test
+index 5a07665..8f3bd51 100755
+--- a/libexec/bats-exec-test
++++ b/libexec/bats-exec-test
+@@ -48,7 +48,7 @@ load() {
+ }
+ 
+ run() {
+-  local e E T
++  local e E T oldIFS
+   [[ ! "$-" =~ e ]] || e=1
+   [[ ! "$-" =~ E ]] || E=1
+   [[ ! "$-" =~ T ]] || T=1
+@@ -57,10 +57,12 @@ run() {
+   set +T
+   output="$("$@" 2>&1)"
+   status="$?"
++  oldIFS=$IFS
+   IFS=$'\n' lines=($output)
+   [ -z "$e" ] || set -e
+   [ -z "$E" ] || set -E
+   [ -z "$T" ] || set -T
++  IFS=$oldIFS
+ }
+ 
+ setup() {
+diff --git a/test/bats.bats b/test/bats.bats
+index 280515d..0df3810 100755
+--- a/test/bats.bats
++++ b/test/bats.bats
+@@ -37,7 +37,7 @@ fixtures bats
+   run bats "$FIXTURE_ROOT/passing.bats"
+   [ $status -eq 0 ]
+   [ ${lines[0]} = "1..1" ]
+-  [ ${lines[1]} = "ok 1 a passing test" ]
++  [ "${lines[1]}" = "ok 1 a passing test" ]
+ }
+ 
+ @test "summary passing tests" {
+@@ -256,3 +256,9 @@ fixtures bats
+   [ "${lines[5]}" =  "# (in test file $RELATIVE_FIXTURE_ROOT/single_line.bats, line 9)" ]
+   [ "${lines[6]}" = $'#   `@test "failing" { false; }\' failed' ]
+ }
++
++@test "testing IFS not modified by run" {
++  run bats "$FIXTURE_ROOT/loop_keep_IFS.bats"
++  [ $status -eq 0 ]
++  [ "${lines[1]}" = "ok 1 loop_func" ]
++}
+diff --git a/test/fixtures/bats/loop_keep_IFS.bats b/test/fixtures/bats/loop_keep_IFS.bats
+new file mode 100644
+index 0000000..f30613a
+--- /dev/null
++++ b/test/fixtures/bats/loop_keep_IFS.bats
+@@ -0,0 +1,16 @@
++# see issue #89
++loop_func() {
++  local search="none one two tree"
++  local d
++
++  for d in $search ; do
++    echo $d
++  done
++}
++
++@test "loop_func" {
++  run loop_func
++  [[ "${lines[3]}" == 'tree' ]]
++  run loop_func
++  [[ "${lines[2]}" == 'two' ]]
++}
+diff --git a/test/suite.bats b/test/suite.bats
+index 14f5008..48f7593 100755
+--- a/test/suite.bats
++++ b/test/suite.bats
+@@ -13,7 +13,7 @@ fixtures suite
+   run bats "$FIXTURE_ROOT/single"
+   [ $status -eq 0 ]
+   [ ${lines[0]} = "1..1" ]
+-  [ ${lines[1]} = "ok 1 a passing test" ]
++  [ "${lines[1]}" = "ok 1 a passing test" ]
+ }
+ 
+ @test "counting tests in a suite" {

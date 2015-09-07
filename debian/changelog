@@ -1,0 +1,12 @@
+bats (0.4.0-1ubuntu4) wily; urgency=medium
+
+  * Set TERM for running the tests when not set or set to unknown.
+  * Apply upstream pull requests #101 to print the output of failed tests.
+
+ -- Matthias Klose <doko@ubuntu.com>  Mon, 07 Sep 2015 20:39:14 +0200
+
+bats (0.4.0-1) unstable; urgency=low
+
+  * Initial release (Closes: #709135)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 06 Dec 2014 21:24:26 -0500
